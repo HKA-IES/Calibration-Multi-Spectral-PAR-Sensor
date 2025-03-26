@@ -6,7 +6,7 @@ This repository contains the code, data, and results for the publication:
 **"Calibration of Multi-Spectral Photosynthetically Active Radiation Sensor"**  
 Authors: Johannes Klueppel, Megan Jurzcak, Ulrike Wallrabe, Laura Maria Comella  
 Published in: Journal Name (Year)  
-DOI: [Link to DOI](https://doi.org/10.5281/zenodo.14981748)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15090041.svg)](https://doi.org/10.5281/zenodo.15090041)
 
 ## Project Description
 **Add abstract when published.**
