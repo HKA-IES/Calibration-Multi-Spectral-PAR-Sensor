@@ -1,5 +1,7 @@
 # Calibration of Multi-Spectral Sensor
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15090041.svg)](https://doi.org/10.5281/zenodo.15090041)
+
 ## Overview
 
 This repository contains the code, data, and results for the publication:  
