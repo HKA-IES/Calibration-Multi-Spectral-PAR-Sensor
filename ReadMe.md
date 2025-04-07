@@ -33,10 +33,16 @@ pip install -r requirements.txt
 Consider to use an own environment.
 
 ## Usage
-Run the ``preprocessing`` script to convert the raw data to normalized data.  
-Run ``PAR_PLS`` script to calculate the coefficients.  
-Run the ``graphs`` script to show the results based on the mean values.  
-In one of the first jupyter cell, the sensor number can be chosen.
+
+1. **Prepare the Data**:
+   - Use the raw measurement data in the `/data` directory or place there your input data files. Ensure the data format matches the requirements of the library.
+
+2. **Run the Notebook**:
+   - Open `Calibration_Execution.ipynb` in Jupyter Notebook or Visual Studio Code.
+   - Follow the steps in the notebook to load the data, apply the calibration functions from `Calibration.py`, and view the results.
+
+3. **Output**:
+   - The results of the calibration will be displayed in the notebook and saved to an output file in the `/data` directory.
 
 ## Results
 Check our publication on: ...
