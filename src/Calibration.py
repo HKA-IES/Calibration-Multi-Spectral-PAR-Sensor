@@ -226,33 +226,20 @@ class Calibration:
         for label, coef in zip(self.channels, self.coefficients.flatten()):
             print(f"{label}:\t{coef}")
 
-    def _save_coefficients(self, database_string = False, **kwargs):
+    def _save_coefficients(self, **kwargs):
         try:
             # Define the file name and path
             file_name = ('/' + self.sensor_type + f'_coefficients.csv')
             full_path = self.file_path + file_name
 
-            if database_string:
-                aquarius_string = f"{self.coefficients[0][0]} * (x1/(x11*x12)) + {self.coefficients[0][1]}  * (x2/(x11*x12)) + {self.coefficients[0][2]} * (x3/(x11*x12)) + {self.coefficients[0][3]} * (x4/(x11*x12)) + {self.coefficients[0][4]} * (x5/(x11*x12)) + {self.coefficients[0][5]} * (x6/(x11*x12)) + {self.coefficients[0][6]} * (x7/(x11*x12)) + {self.coefficients[0][7]} * (x8/(x11*x12)) + {self.coefficients[0][8]} * (x9/(x11*x12)) + {self.coefficients[0][9]} * (x10/(x11*x12))"
-            
-                # Create a DataFrame for the current coefficients
-                coeff_data = pd.DataFrame([{
-                "sensor_type": self.sensor_type,
-                "sensor_number": self.sensor_number,
-                **{f"coef_{i+1}": coef for i, coef in enumerate(self.coefficients.flatten()[:-2])},
-                "coef_clear": self.coefficients.flatten()[-2],
-                "coef_nir": self.coefficients.flatten()[-1],
-                "aquarius_string": aquarius_string
-                }])
-            else:
-                # Create a DataFrame for the current coefficients
-                coeff_data = pd.DataFrame([{
-                "sensor_type": self.sensor_type,
-                "sensor_number": self.sensor_number,
-                **{f"coef_{i+1}": coef for i, coef in enumerate(self.coefficients.flatten()[:-2])},
-                "coef_clear": self.coefficients.flatten()[-2],
-                "coef_nir": self.coefficients.flatten()[-1]
-                }])
+            # Create a DataFrame for the current coefficients
+            coeff_data = pd.DataFrame([{
+            "sensor_type": self.sensor_type,
+            "sensor_number": self.sensor_number,
+            **{f"coef_{i+1}": coef for i, coef in enumerate(self.coefficients.flatten()[:-2])},
+            "coef_clear": self.coefficients.flatten()[-2],
+            "coef_nir": self.coefficients.flatten()[-1]
+            }])
 
             # Check if the file already exists
             if os.path.exists(full_path):
