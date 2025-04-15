@@ -1,13 +1,13 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-- family-names: "Johannes"
-  given-names: "Klueppel"
+- family-names: "Klueppel"
+  given-names: "Johannes"
   orcid: "https://orcid.org/0000-0002-6370-9522"
-- family-names: "Megan"
-  given-names: "Jurzcak"
-- family-names: "Laura"
-  given-names: "Comella"
+- family-names: "Jurzcak"
+  given-names: "Megan"
+- family-names: "Comella"
+  given-names: "Laura"
   orcid: "https://orcid.org/0000-0001-8283-1454"
 title: "HKA-IES/Calibration-Multi-Spectral-PAR-Sensor: Zenodo release"
 version: v1.1.1
