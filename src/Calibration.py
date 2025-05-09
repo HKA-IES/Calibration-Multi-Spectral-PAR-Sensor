@@ -127,16 +127,36 @@ class Calibration:
         self.df_norm = self.df_norm.sort_values(by="wavelength").reset_index(drop=True)
         self.df_norm_mean = self.df_norm.groupby("wavelength").mean(numeric_only=True).reset_index().copy()
 
-    def _ppfd_calculation(self):
+    def _ppfd_calculation(self, spectrum, **kwargs):
+        spectral_ranges = {
+            "blue": [400, 500],
+            "green": [500, 600],
+            "red": [600, 700],
+            "PAR": [400, 700]
+        }
+
+        start = spectral_ranges[spectrum][0]
+        end = spectral_ranges[spectrum][1]
+
         self.df_norm["PAR"] = (self.df_norm['I_dut'] * self.df_norm['wavelength']*1E-9).astype(float) / (self.planck * self.c_light) * ((1e6)/(self.avogadro))
-        self.df_norm.loc[(self.df_norm['wavelength'] < 400) | (self.df_norm['wavelength'] > 700), 'PAR'] = 0
+        self.df_norm.loc[(self.df_norm['wavelength'] < start) | (self.df_norm['wavelength'] > end), 'PAR'] = 0
 
         self.df_norm_mean["PAR"] = (self.df_norm_mean['I_dut'] * self.df_norm_mean['wavelength']*1E-9).astype(float) / (self.planck * self.c_light) * ((1e6)/(self.avogadro))
-        self.df_norm_mean.loc[(self.df_norm_mean['wavelength'] < 400) | (self.df_norm_mean['wavelength'] > 700), 'PAR'] = 0
+        self.df_norm_mean.loc[(self.df_norm_mean['wavelength'] < start) | (self.df_norm_mean['wavelength'] > end), 'PAR'] = 0
 
-    def _irradiance_transform(self):
-        self.df_norm.loc[(self.df_norm['wavelength'] < 400) | (self.df_norm['wavelength'] > 700), 'I_dut'] = 0
-        self.df_norm_mean.loc[(self.df_norm_mean['wavelength'] < 400) | (self.df_norm_mean['wavelength'] > 700), 'I_dut'] = 0
+    def _irradiance_transform(self, spectrum, **kwargs):
+        spectral_ranges = {
+            "blue": [400, 500],
+            "green": [500, 600],
+            "red": [600, 700],
+            "PAR": [400, 700]
+        }
+
+        start = spectral_ranges[spectrum][0]
+        end = spectral_ranges[spectrum][1]
+
+        self.df_norm.loc[(self.df_norm['wavelength'] < start) | (self.df_norm['wavelength'] > end), 'I_dut'] = 0
+        self.df_norm_mean.loc[(self.df_norm_mean['wavelength'] < start) | (self.df_norm_mean['wavelength'] > end), 'I_dut'] = 0
 
     def _save_data(self):
         try:
@@ -159,9 +179,9 @@ class Calibration:
             self._calculate_irradiance()
             self._calculate_iterations()
             self._normalization()
-            self._ppfd_calculation()
+            self._ppfd_calculation(**kwargs)
             if not PAR:
-                self._irradiance_transform()
+                self._irradiance_transform(**kwargs)
             if save_data:
                 self._save_data()
             return True
