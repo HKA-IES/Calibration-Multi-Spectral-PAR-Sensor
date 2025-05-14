@@ -172,7 +172,7 @@ class Calibration:
         except Exception as e:
             print(f"Error save data: {e}")
 
-    def preprocessing(self, save_data = True, PAR = False, **kwargs):
+    def preprocessing(self, save_data = True, PAR = True, **kwargs):
         if self._load_raw_data(**kwargs):
             self._basic_value()
             self._load_beamsplitter(**kwargs)
