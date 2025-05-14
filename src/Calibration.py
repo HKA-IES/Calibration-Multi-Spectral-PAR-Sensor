@@ -74,7 +74,7 @@ class Calibration:
         try:
             self.df_beamsplitter = pd.read_csv(beamsplitter_file, delimiter=",")
             #self.df_beamsplitter['ratio'] = self.df_beamsplitter['trans_adj_bs']/self.df_beamsplitter['refl_adj_bs']  # ratio of transmitted (DUT) to reflected (PM)
-            print("Beamsplitter data loaded")
+            #print("Beamsplitter data loaded")
         except Exception as e:
             print(f"Error loading beamsplitter data: {e}")
 
@@ -252,15 +252,14 @@ class Calibration:
         min_rmse = min(rmses)
         max_r2_index = r2s.index(max_r2)
         min_rmse_index = rmses.index(min_rmse)
-        print("Max R2 is reached with %d PLS components" %(max_r2_index+1))
-        print('R2: %0.4f, RMSE: %0.8f' % (max_r2, min_rmse))
+        #print("Max R2 is reached with %d PLS components" %(max_r2_index+1))
+        #print('R2: %0.4f, RMSE: %0.8f' % (max_r2, min_rmse))
 
         pls2 = PLSRegression(n_components=max_r2_index+1)
         pls2.fit(X_train, y_train)
         self.coefficients = pls2.coef_
 
-        for label, coef in zip(self.channels, self.coefficients.flatten()):
-            print(f"{label}:\t{coef}")
+        print("Coefficients (comma-separated):", ", ".join(map(str, self.coefficients.flatten())))
 
     def _save_coefficients(self, **kwargs):
         try:
