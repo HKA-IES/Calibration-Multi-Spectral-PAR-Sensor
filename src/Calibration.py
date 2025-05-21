@@ -74,7 +74,7 @@ class Calibration:
         try:
             self.df_beamsplitter = pd.read_csv(beamsplitter_file, delimiter=",")
             #self.df_beamsplitter['ratio'] = self.df_beamsplitter['trans_adj_bs']/self.df_beamsplitter['refl_adj_bs']  # ratio of transmitted (DUT) to reflected (PM)
-            print("Beamsplitter data loaded")
+            #print("Beamsplitter data loaded")
         except Exception as e:
             print(f"Error loading beamsplitter data: {e}")
 
@@ -128,11 +128,15 @@ class Calibration:
         self.df_norm_mean = self.df_norm.groupby("wavelength").mean(numeric_only=True).reset_index().copy()
 
     def _ppfd_calculation(self):
+        # Calculate the PPFD (Photosynthetic Photon Flux Density) using the formula
+        start = 400
+        end = 700
+
         self.df_norm["PAR"] = (self.df_norm['I_dut'] * self.df_norm['wavelength']*1E-9).astype(float) / (self.planck * self.c_light) * ((1e6)/(self.avogadro))
-        self.df_norm.loc[(self.df_norm['wavelength'] < 400) | (self.df_norm['wavelength'] > 700), 'PAR'] = 0
+        self.df_norm.loc[(self.df_norm['wavelength'] < start) | (self.df_norm['wavelength'] > end), 'PAR'] = 0
 
         self.df_norm_mean["PAR"] = (self.df_norm_mean['I_dut'] * self.df_norm_mean['wavelength']*1E-9).astype(float) / (self.planck * self.c_light) * ((1e6)/(self.avogadro))
-        self.df_norm_mean.loc[(self.df_norm_mean['wavelength'] < 400) | (self.df_norm_mean['wavelength'] > 700), 'PAR'] = 0
+        self.df_norm_mean.loc[(self.df_norm_mean['wavelength'] < start) | (self.df_norm_mean['wavelength'] > end), 'PAR'] = 0
 
     def _save_data(self):
         try:
@@ -148,15 +152,18 @@ class Calibration:
         except Exception as e:
             print(f"Error save data: {e}")
 
-    def preprocessing(self, **kwargs):
+    def preprocessing(self, save_data = True, PAR = True, **kwargs):
         if self._load_raw_data(**kwargs):
             self._basic_value()
             self._load_beamsplitter(**kwargs)
             self._calculate_irradiance()
             self._calculate_iterations()
             self._normalization()
-            self._ppfd_calculation()
-            self._save_data()
+            self._ppfd_calculation(**kwargs)
+            if not PAR:
+                self._irradiance_transform(**kwargs)
+            if save_data:
+                self._save_data()
             return True
         else:
             return False
@@ -182,14 +189,19 @@ class Calibration:
             self.df_norm = pd.read_csv(path + '/' + file, delimiter=",")
             self.df_norm = self.df_norm.reset_index(drop=True)
 
+            return self.df_norm
 
         except Exception as e:
             print(f"Error loading data: {e}")
+            return False
 
-    def _execute_pls(self, channels = None):
-        df_pls = self.df_norm[self.df_norm['cycle'].between(1, self.df_norm['cycle'].max() - 1)].copy()
+    def _execute_pls(self, channels = None, **kwargs):
+        if self.df_norm['cycle'].max() > 1:
+            df_pls = self.df_norm[self.df_norm['cycle'].between(1, self.df_norm['cycle'].max() - 1)].copy()
+        else:
+            df_pls = self.df_norm.copy()
+
         df_pls = df_pls.dropna()
-        #df_pls = df_pls[(df_pls["wavelength"] >= 400) & (df_pls["wavelength"] <= 1100)]
         if channels is None:    
             self.channels = ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "clear", "nir"]
         else:
@@ -216,15 +228,14 @@ class Calibration:
         min_rmse = min(rmses)
         max_r2_index = r2s.index(max_r2)
         min_rmse_index = rmses.index(min_rmse)
-        print("Max R2 is reached with %d PLS components" %(max_r2_index+1))
-        print('R2: %0.4f, RMSE: %0.8f' % (max_r2, min_rmse))
+        #print("Max R2 is reached with %d PLS components" %(max_r2_index+1))
+        #print('R2: %0.4f, RMSE: %0.8f' % (max_r2, min_rmse))
 
         pls2 = PLSRegression(n_components=max_r2_index+1)
         pls2.fit(X_train, y_train)
         self.coefficients = pls2.coef_
 
-        for label, coef in zip(self.channels, self.coefficients.flatten()):
-            print(f"{label}:\t{coef}")
+        print("Coefficients:", ", ".join(map(str, self.coefficients.flatten())))
 
     def _save_coefficients(self, **kwargs):
         try:
@@ -265,10 +276,11 @@ class Calibration:
         except Exception as e:
             print(f"Error saving coefficients: {e}")
 
-    def pls(self, channels = None, **kwargs):
+    def pls(self, save_coef = True, channels = None, **kwargs):
         #self._load_norm_data()
-        self._execute_pls(channels=channels)
-        self._save_coefficients(**kwargs)
+        self._execute_pls(channels=channels, **kwargs)
+        if save_coef:
+            self._save_coefficients(**kwargs)
 
     def _load_norm_mean_data(self):
         try:
@@ -294,6 +306,26 @@ class Calibration:
 
         except Exception as e:
             print(f"Error loading data: {e}")
+
+        
+    def _repeatability(self):
+        df_repeatability = self.df_norm.copy()
+
+        # Calculate mean and standard deviation for each wavelength in the range 390 to 439
+        df_repeatability["PAR_calculated"] = df_repeatability[self.channels].mul(self.coefficients, axis=1).sum(axis=1)
+        stats_390_399 = df_repeatability[df_repeatability['wavelength'].between(390, 399)].groupby('wavelength')["PAR_calculated"].agg(['mean', 'std']).reset_index()
+        stats_400_439 = df_repeatability[df_repeatability['wavelength'].between(400, 439)].groupby('wavelength')["PAR_calculated"].agg(['mean', 'std']).reset_index()
+        stats_440_700 = df_repeatability[df_repeatability['wavelength'].between(440, 700)].groupby('wavelength')["PAR_calculated"].agg(['mean', 'std']).reset_index()
+        stats_701_1100 = df_repeatability[df_repeatability['wavelength'].between(701, 1100)].groupby('wavelength')["PAR_calculated"].agg(['mean', 'std']).reset_index()
+
+        # Combine the results into a single DataFrame with an additional column indicating the range
+        stats_390_399["range"] = "390_399"
+        stats_400_439["range"] = "400_439"
+        stats_440_700["range"] = "440_700"
+        stats_701_1100["range"] = "701_1100"
+        stats = pd.concat([stats_390_399, stats_400_439, stats_440_700, stats_701_1100], ignore_index=True)
+                
+        return stats
     
     # Define Gaussian function
     def _gaussian(self, x, A, mu, sigma):
@@ -403,7 +435,7 @@ class Calibration:
         if save:
             plt.savefig(self.file_path + '/' + self.sensor_type + f'.Sensor{self.sensor_number}_gaussian_fit.png', dpi=600, bbox_inches='tight')
 
-    def plot_quantum_response(self, save = False):
+    def plot_quantum_response(self, save = False, plot = True):
         fr1  = '#344a9a'    # freiburg logo blue
         fr1a = '#868dc2'    # freiburg logo blue (lighter)
         fr1b = '#afb1d8'    # freiburg logo blue (lightest)
@@ -430,34 +462,37 @@ class Calibration:
         mark_sz = 1
 
         df_plot = self.df_norm[self.df_norm['cycle'] == self.df_norm['cycle'].max()].copy()
-        #print(df_plot.size)
-
-        plt.figure(figsize=[8,4])
-
-        plt.rcParams["font.family"] = "serif"
-        plt.rcParams["font.serif"] = "Times New Roman"
 
         df_plot["PAR_calculated"] = df_plot[self.channels].mul(self.coefficients, axis=1).sum(axis=1)
 
-        plt.scatter(df_plot["wavelength"], df_plot["PAR_calculated"]/df_plot['PAR'].max(), label='Calculated PAR', color=fr1, s=mark_sz, marker=f1_mark)
-        plt.step(df_plot['wavelength'], df_plot['PAR']/df_plot['PAR'].max(), linestyle='--', label=f'Ideal Quantum Response', color=fr2)
+        if plot:
+            plt.figure(figsize=[8,4])
 
-        plt.rcParams['axes.labelsize'] = 14
-        plt.rcParams['xtick.labelsize'] = 14
-        plt.rcParams['ytick.labelsize'] = 14
-        plt.rcParams['axes.titlesize'] = 16
+            plt.rcParams["font.family"] = "serif"
+            plt.rcParams["font.serif"] = "Times New Roman"
 
-        plt.grid()
-        plt.xlabel('Wavelength (nm)')
-        plt.ylabel('Normalized Response')
-        # Remove rows with NaN values in 'PAR' or 'PAR_calculated'
-        df_plot_filtered = df_plot.dropna(subset=['PAR', 'PAR_calculated'])
-        plt.text(820, 0.23, f"R2: {r2_score(df_plot_filtered['PAR'], df_plot_filtered['PAR_calculated']):.3f}", fontsize = 14)
-        plt.title(f'Quantum Response')
-        #plt.title(f'{self.sensor_type} Sensor {self.sensor_number} Quantum Response')
-        plt.legend(loc = "lower left", bbox_to_anchor=(0.5,0.5), fontsize = 14)
 
-        plt.subplots_adjust(bottom=0.15)
+            plt.scatter(df_plot["wavelength"], df_plot["PAR_calculated"]/df_plot['PAR'].max(), label='Calculated PAR', color=fr1, s=mark_sz, marker=f1_mark)
+            plt.step(df_plot['wavelength'], df_plot['PAR']/df_plot['PAR'].max(), linestyle='--', label=f'Ideal Quantum Response', color=fr2)
+
+            plt.rcParams['axes.labelsize'] = 14
+            plt.rcParams['xtick.labelsize'] = 14
+            plt.rcParams['ytick.labelsize'] = 14
+            plt.rcParams['axes.titlesize'] = 16
+
+            plt.grid()
+            plt.xlabel('Wavelength (nm)')
+            plt.ylabel('Normalized Response')
+            # Remove rows with NaN values in 'PAR' or 'PAR_calculated'
+            df_plot_filtered = df_plot.dropna(subset=['PAR', 'PAR_calculated'])
+            plt.text(820, 0.23, f"R2: {r2_score(df_plot_filtered['PAR'], df_plot_filtered['PAR_calculated']):.3f}", fontsize = 14)
+            plt.title(f'Quantum Response')
+            #plt.title(f'{self.sensor_type} Sensor {self.sensor_number} Quantum Response')
+            plt.legend(loc = "lower left", bbox_to_anchor=(0.5,0.5), fontsize = 14)
+
+            plt.subplots_adjust(bottom=0.15)
 
         if save:
             plt.savefig(self.file_path + '/' + self.sensor_type + f'.Sensor{self.sensor_number}_quantum_response.png', dpi=600, bbox_inches='tight')
+
+        return df_plot["wavelength"], df_plot["PAR_calculated"]/df_plot['PAR'].max(), df_plot['PAR']/df_plot['PAR'].max()
