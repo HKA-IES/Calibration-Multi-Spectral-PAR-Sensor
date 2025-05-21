@@ -1,6 +1,6 @@
 # Calibration of Multi-Spectral Sensor
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15224597.svg)](https://doi.org/10.5281/zenodo.15224597) 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15090040.svg)](https://doi.org/10.5281/zenodo.15090040) 
 
 ## Overview
 
@@ -62,7 +62,7 @@ If you use this project, please cite our publication:
 }
 ```
 ## Zenodo
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15224597.svg)](https://doi.org/10.5281/zenodo.15224597) 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15090040.svg)](https://doi.org/10.5281/zenodo.15090040) 
 
 ## Acknowledgments
 This work was conducted in the framework of the collaborative research centre ECOSENSE with funding from the German Research Foundation SFB 1537/1 ECOSENSE.  
