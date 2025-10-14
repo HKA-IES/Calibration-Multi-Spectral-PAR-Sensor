@@ -4,14 +4,11 @@
 
 ## Overview
 
-This repository contains the code, data, and results for the publication:  
-**"Calibration of Multi-Spectral Photosynthetically Active Radiation Sensor"**  
-Authors: Johannes Klueppel, Megan Jurzcak, Ulrike Wallrabe, Laura Maria Comella  
-Published in: Journal Name (Year)  
-DOI to [Publication]()
+This repository contains the code, data, and results to calibrate of the multi-spectral sensor AS7341 to Photosynthetically Active Radiation.
 
 ## Project Description
-**Add abstract when published.**
+Photosynthetically Active Radiation (PAR) sensors are essential tools in plant stress monitoring, ecophysiology, and forest growth modeling. Recently, multi-spectral PAR sensors have emerged as promising alternatives to conventional single-channel systems, offering comparable accuracy and additional spectral information.  
+However, existing calibration methods rely on single-channel references under variable ambient light conditions, which limits their reliability across diverse lighting environments. This study introduces a novel calibration methodology conducted in a controlled light environment to ensure consistent, reproducible calibration independent of external light variability. The Partial Least Squares (PLS) regression model was tailored for this application by integrating the optical properties of the system components through a customized preprocessing framework. PLS effectively manages collinearity among spectral channels, generating individual calibration coefficients while compensating for spectral leakage, particularly in the near-infrared range. The proposed calibration approach is validated through field experiments under varying weather conditions, demonstrating a normalized RMSE of just 3.92% compared to a commercial PAR sensor. 
 
 ## Repository Structure
 
@@ -44,23 +41,10 @@ Consider to use an own environment.
 3. **Output**:
    - The results of the calibration will be displayed in the notebook and saved to an output file in the `/data` directory.
 
-## Results
-Check our publication on: ...
 
 ## Citation of Publication
-**Add when published.**
+If you use this project, please cite our publication.
 
-If you use this project, please cite our publication:
-
-```
-@article{YourName2024,
-  title={Title of Your Scientific Publication},
-  author={Your Name and Co-author Names},
-  journal={Journal Name},
-  year={2024},
-  doi={10.xxxx/xxxx}
-}
-```
 ## Zenodo
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15224597.svg)](https://doi.org/10.5281/zenodo.15224597) 
 
