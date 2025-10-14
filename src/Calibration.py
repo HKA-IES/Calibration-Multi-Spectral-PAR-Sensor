@@ -7,6 +7,8 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.model_selection import cross_val_predict
 from sklearn.metrics import mean_squared_error, r2_score
 from scipy.optimize import curve_fit
+from sklearn.linear_model import LinearRegression
+from sklearn.neural_network import MLPRegressor
 
 import matplotlib.pyplot as plt
 
@@ -127,16 +129,36 @@ class Calibration:
         self.df_norm = self.df_norm.sort_values(by="wavelength").reset_index(drop=True)
         self.df_norm_mean = self.df_norm.groupby("wavelength").mean(numeric_only=True).reset_index().copy()
 
-    def _ppfd_calculation(self):
-        # Calculate the PPFD (Photosynthetic Photon Flux Density) using the formula
-        start = 400
-        end = 700
+    def _ppfd_calculation(self, spectrum, **kwargs):
+        spectral_ranges = {
+            "blue": [400, 500],
+            "green": [500, 600],
+            "red": [600, 700],
+            "PAR": [400, 700]
+        }
+
+        start = spectral_ranges[spectrum][0]
+        end = spectral_ranges[spectrum][1]
 
         self.df_norm["PAR"] = (self.df_norm['I_dut'] * self.df_norm['wavelength']*1E-9).astype(float) / (self.planck * self.c_light) * ((1e6)/(self.avogadro))
         self.df_norm.loc[(self.df_norm['wavelength'] < start) | (self.df_norm['wavelength'] > end), 'PAR'] = 0
 
         self.df_norm_mean["PAR"] = (self.df_norm_mean['I_dut'] * self.df_norm_mean['wavelength']*1E-9).astype(float) / (self.planck * self.c_light) * ((1e6)/(self.avogadro))
         self.df_norm_mean.loc[(self.df_norm_mean['wavelength'] < start) | (self.df_norm_mean['wavelength'] > end), 'PAR'] = 0
+
+    def _irradiance_transform(self, spectrum, **kwargs):
+        spectral_ranges = {
+            "blue": [400, 500],
+            "green": [500, 600],
+            "red": [600, 700],
+            "PAR": [400, 700]
+        }
+
+        start = spectral_ranges[spectrum][0]
+        end = spectral_ranges[spectrum][1]
+
+        self.df_norm.loc[(self.df_norm['wavelength'] < start) | (self.df_norm['wavelength'] > end), 'I_dut'] = 0
+        self.df_norm_mean.loc[(self.df_norm_mean['wavelength'] < start) | (self.df_norm_mean['wavelength'] > end), 'I_dut'] = 0
 
     def _save_data(self):
         try:
@@ -195,7 +217,7 @@ class Calibration:
             print(f"Error loading data: {e}")
             return False
 
-    def _execute_pls(self, channels = None, **kwargs):
+    def _execute_pls(self, channels = None, PAR = True, **kwargs):
         if self.df_norm['cycle'].max() > 1:
             df_pls = self.df_norm[self.df_norm['cycle'].between(1, self.df_norm['cycle'].max() - 1)].copy()
         else:
@@ -207,7 +229,10 @@ class Calibration:
         else:
             self.channels = channels
         X_train =  df_pls[self.channels]
-        y_train =  df_pls["PAR"]
+        if PAR:
+            y_train =  df_pls["PAR"]
+        else:
+            y_train =  df_pls["I_dut"]
 
         components = np.arange(1,len(self.channels)+1)
         xticks = np.arange(1,len(self.channels)+1)
@@ -228,14 +253,43 @@ class Calibration:
         min_rmse = min(rmses)
         max_r2_index = r2s.index(max_r2)
         min_rmse_index = rmses.index(min_rmse)
-        #print("Max R2 is reached with %d PLS components" %(max_r2_index+1))
-        #print('R2: %0.4f, RMSE: %0.8f' % (max_r2, min_rmse))
+        print(f"Max R2 is reached with {max_r2_index+1} PLS components")
+        print(f"max R2: {max_r2:.4f}, min RMSE: {min_rmse:.8f}")
 
         pls2 = PLSRegression(n_components=max_r2_index+1)
         pls2.fit(X_train, y_train)
         self.coefficients = pls2.coef_
 
-        print("Coefficients:", ", ".join(map(str, self.coefficients.flatten())))
+        print("Coefficients (comma-separated):", ", ".join(map(str, self.coefficients.flatten())))
+
+    def _execute_mlr(self, channels = None, PAR = True, **kwargs):
+
+        if self.df_norm['cycle'].max() > 1:
+            df_mlr = self.df_norm[self.df_norm['cycle'].between(1, self.df_norm['cycle'].max() - 1)].copy()
+        else:
+            df_mlr = self.df_norm.copy()
+
+        df_mlr = df_mlr.dropna()
+        if channels is None:    
+            self.channels = ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "clear", "nir"]
+        else:
+            self.channels = channels
+        X_train =  df_mlr[self.channels]
+        if PAR:
+            y_train =  df_mlr["PAR"]
+        else:
+            y_train =  df_mlr["I_dut"]
+
+        mlr = LinearRegression()
+        y_pred = cross_val_predict(mlr, X_train, y_train, cv=10)
+        r2 = r2_score(y_train, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_train, y_pred))
+        print(f"MLR R2: {r2:.4f}, RMSE: {rmse:.8f}")
+
+        mlr.fit(X_train, y_train)
+        self.coefficients = mlr.coef_
+
+        print("MLR Coefficients (comma-separated):", ", ".join(map(str, self.coefficients.flatten())))
 
     def _save_coefficients(self, **kwargs):
         try:
@@ -276,9 +330,12 @@ class Calibration:
         except Exception as e:
             print(f"Error saving coefficients: {e}")
 
-    def pls(self, save_coef = True, channels = None, **kwargs):
+    def regression(self, reg="pls", save_coef=True, channels=None, **kwargs):
         #self._load_norm_data()
-        self._execute_pls(channels=channels, **kwargs)
+        if reg == "mlr":
+            self._execute_mlr(channels=channels, **kwargs)
+        else:
+            self._execute_pls(channels=channels, **kwargs)
         if save_coef:
             self._save_coefficients(**kwargs)
 
@@ -374,7 +431,7 @@ class Calibration:
         channels = ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8"]
         colors = [f1_colour, f2_colour, f3_colour, f4_colour, f5_colour, f6_colour, f7_colour, f8_colour]
         fits = {}
-        mark_sz = 1.5
+        mark_sz = 3
         plt.rcParams.update({'font.size': 16})
 
         plt.rcParams["font.family"] = "serif"
@@ -422,11 +479,11 @@ class Calibration:
             # Plot scatter
             plt.scatter(x, y, color=color, s=mark_sz, marker='+', label=channel.upper())
 
-        plt.step(df_plot['wavelength'], df_plot['PAR_slope'], linestyle='--',linewidth=0.7, label=f'Ideal\nPPFD', color="black")
+        plt.step(df_plot['wavelength'], df_plot['PAR_slope'], linestyle='-',linewidth=0.7, label=f'Ideal\nPPFD', color="black")
         plt.grid()
         plt.xlabel('Wavelength (nm)', fontsize=14)
         plt.ylabel('Normalized Channel Response', fontsize=14)
-        plt.title(f'Normalized Channel Response of AS7341', fontsize=16)
+        plt.title(f'Channel Response of AS7341', fontsize=16)
         #plt.title(f'Normalized Channel Response of AS7341\n{self.sensor_type} Sensor {self.sensor_number}', fontsize=18)
         #plt.xlim([395,755])
         plt.legend(loc='lower left' , bbox_to_anchor=[0.99, -0.050], fontsize=14)
@@ -471,7 +528,6 @@ class Calibration:
             plt.rcParams["font.family"] = "serif"
             plt.rcParams["font.serif"] = "Times New Roman"
 
-
             plt.scatter(df_plot["wavelength"], df_plot["PAR_calculated"]/df_plot['PAR'].max(), label='Calculated PAR', color=fr1, s=mark_sz, marker=f1_mark)
             plt.step(df_plot['wavelength'], df_plot['PAR']/df_plot['PAR'].max(), linestyle='--', label=f'Ideal Quantum Response', color=fr2)
 
@@ -486,9 +542,13 @@ class Calibration:
             # Remove rows with NaN values in 'PAR' or 'PAR_calculated'
             df_plot_filtered = df_plot.dropna(subset=['PAR', 'PAR_calculated'])
             plt.text(820, 0.23, f"R2: {r2_score(df_plot_filtered['PAR'], df_plot_filtered['PAR_calculated']):.3f}", fontsize = 14)
-            plt.title(f'Quantum Response')
+            plt.title(f'Quantum Response {self.sensor_type} Sensor {self.sensor_number}')
             #plt.title(f'{self.sensor_type} Sensor {self.sensor_number} Quantum Response')
             plt.legend(loc = "lower left", bbox_to_anchor=(0.5,0.5), fontsize = 14)
+
+            r2 = r2_score(df_plot_filtered['PAR'], df_plot_filtered['PAR_calculated'])
+            RMSE = np.sqrt(mean_squared_error(df_plot_filtered['PAR'], df_plot_filtered['PAR_calculated']))
+            print(f"Quantum Response R2: {r2:.4f}, RMSE: {RMSE:.8f}")
 
             plt.subplots_adjust(bottom=0.15)
 
@@ -496,3 +556,65 @@ class Calibration:
             plt.savefig(self.file_path + '/' + self.sensor_type + f'.Sensor{self.sensor_number}_quantum_response.png', dpi=600, bbox_inches='tight')
 
         return df_plot["wavelength"], df_plot["PAR_calculated"]/df_plot['PAR'].max(), df_plot['PAR']/df_plot['PAR'].max()
+
+    def plot_energy_response(self, save = False, plot = True):
+        fr1  = '#344a9a'    # freiburg logo blue
+        fr1a = '#868dc2'    # freiburg logo blue (lighter)
+        fr1b = '#afb1d8'    # freiburg logo blue (lightest)
+        fr1c = '#00004a'    # freiburg logo blue (darker)
+        fr2  = '#93bc3c'    # ecosense green
+        fr2a = '#c1e653'    # ecosense green (lighter)
+        fr2a = '#659023'    # ecosense green (darker)
+        fr3  = '#00a082'    # freiburg teal
+        fr4  = '#f5c2cd'    # freiburg pink
+        fr5  = '#ffe863'    # freiburg yellow
+        fr6  = '#8f6b30'    # freiburg brown
+
+        # Measurement Markers {'none' none | 'o' circle | '^' triangle | 's' square |'X' X | '+' plus}
+        f1_mark = 'o'       # λ = 415nm
+        f2_mark = 'o'       # λ = 445nm
+        f3_mark = 'o'       # λ = 480nm
+        f4_mark = 'o'       # λ = 515nm
+        f5_mark = 'o'       # λ = 555nm
+        f6_mark = 'o'       # λ = 590nm
+        f7_mark = 'o'       # λ = 630nm
+        f8_mark = 'o'       # λ = 680nm
+
+        # Marker Size
+        mark_sz = 1
+
+        df_plot = self.df_norm[self.df_norm['cycle'] == self.df_norm['cycle'].max()].copy()
+
+        df_plot["I_calculated"] = df_plot[self.channels].mul(self.coefficients, axis=1).sum(axis=1)
+
+        if plot:
+            plt.figure(figsize=[8,4])
+
+            plt.rcParams["font.family"] = "serif"
+            plt.rcParams["font.serif"] = "Times New Roman"
+
+
+            plt.scatter(df_plot["wavelength"], df_plot["I_calculated"]/df_plot['I_dut'].max(), label='Calculated Energy', color=fr1, s=mark_sz, marker=f1_mark)
+            plt.step(df_plot['wavelength'], df_plot['I_dut']/df_plot['I_dut'].max(), linestyle='--', label=f'Ideal Energy Response', color=fr2)
+
+            plt.rcParams['axes.labelsize'] = 14
+            plt.rcParams['xtick.labelsize'] = 14
+            plt.rcParams['ytick.labelsize'] = 14
+            plt.rcParams['axes.titlesize'] = 16
+
+            plt.grid()
+            plt.xlabel('Wavelength (nm)')
+            plt.ylabel('Normalized Response')
+            # Remove rows with NaN values in 'PAR' or 'PAR_calculated'
+            df_plot_filtered = df_plot.dropna(subset=['I_dut', 'I_calculated'])
+            plt.text(820, 0.23, f"R2: {r2_score(df_plot_filtered['I_dut'], df_plot_filtered['I_calculated']):.3f}", fontsize = 14)
+            plt.title(f'Energy Response')
+            #plt.title(f'{self.sensor_type} Sensor {self.sensor_number} Quantum Response')
+            plt.legend(loc = "lower left", bbox_to_anchor=(0.5,0.5), fontsize = 14)
+
+            plt.subplots_adjust(bottom=0.15)
+
+        if save:
+            plt.savefig(self.file_path + '/' + self.sensor_type + f'.Sensor{self.sensor_number}_energy_response.png', dpi=600, bbox_inches='tight')
+
+        return df_plot["wavelength"], df_plot["I_calculated"]/df_plot['I_dut'].max(), df_plot['I_dut']/df_plot['I_dut'].max()
