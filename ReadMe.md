@@ -4,7 +4,16 @@
 
 ## Overview
 
-This repository contains the code, data, and results to calibrate of the multi-spectral sensor AS7341 to Photosynthetically Active Radiation.
+This repository contains the code, data, and results for the publication:  
+**"Calibration of Multi-Spectral Photosynthetically Active Radiation Sensor"**  
+Authors: Johannes Klueppel (1), Megan Jurzcak (1), Ulrike Wallrabe (1), Laura Maria Comella ^2^   
+(1) _Department of Microsystems Engineering – IMTEK, University of Freiburg, Freiburg, Germany_  
+(2) _Institute of Energy Efficient Mobility, Karlsruhe University of Applied Sciences, Karlsruhe, Germany_  
+
+Published in: Elsevier Measurement (2026)  
+DOI: [https://doi.org/10.1016/j.measurement.2026.120734](https://doi.org/10.1016/j.measurement.2026.120734) 
+##
+![Graphical Abstract](graphical_abstract_PAR_calib_wb.png "Graphical Abstract")
 
 ## Project Description
 Photosynthetically Active Radiation (PAR) sensors are essential tools in plant stress monitoring, ecophysiology, and forest growth modeling. Recently, multi-spectral PAR sensors have emerged as promising alternatives to conventional single-channel systems, offering comparable accuracy and additional spectral information.  
@@ -43,12 +52,27 @@ Consider to use an own environment.
 
 
 ## Citation of Publication
-If you use this project, please cite our publication.
+If you use this project, please cite our publication:
+
+```
+@article{klueppel_calibration_2026,
+	title = {Calibration of multi-spectral photosynthetically active radiation sensor},
+	volume = {270},
+	issn = {02632241},
+	doi = {10.1016/j.measurement.2026.120734},
+	urldate = {2026-02-19},
+	journal = {Measurement},
+	author = {Klueppel, Johannes and Jurczak, Megan and Wallrabe, Ulrike and Comella, Laura Maria},
+	month = apr,
+	year = {2026},
+	pages = {120734},
+}
+```
 
 ## Zenodo
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15090040.svg)](https://doi.org/10.5281/zenodo.15090040) 
 
-## Acknowledgments
-This work was conducted in the framework of the collaborative research centre ECOSENSE with funding from the German Research Foundation SFB 1537/1 ECOSENSE.  
+## Acknowledgements
+This work was conducted within the framework of the collaborative research center ECOSENSE, with funding from the Deutsche Forschungsgemeinschaft (DFG) - Project-ID 459819582 - SFB 1537.  
 Further information: [ECOSENSE website](https://uni-freiburg.de/ecosense/)  
 DOI to [ECOSENSE Grand Proposal](https://doi.org/10.3897/rio.10.e129357)
