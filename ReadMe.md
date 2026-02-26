@@ -6,7 +6,7 @@
 
 This repository contains the code, data, and results for the publication:  
 **"Calibration of Multi-Spectral Photosynthetically Active Radiation Sensor"**  
-Authors: Johannes Klueppel (1), Megan Jurzcak (1), Ulrike Wallrabe (1), Laura Maria Comella ^2^   
+Authors: Johannes Klueppel (1), Megan Jurzcak (1), Ulrike Wallrabe (1), Laura Maria Comella (2)   
 (1) _Department of Microsystems Engineering – IMTEK, University of Freiburg, Freiburg, Germany_  
 (2) _Institute of Energy Efficient Mobility, Karlsruhe University of Applied Sciences, Karlsruhe, Germany_  
 
